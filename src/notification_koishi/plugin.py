@@ -10,6 +10,9 @@ if TYPE_CHECKING:
 from .schema import Config
 
 
+SUMMARY_LIMIT = 1200
+
+
 class KoishiChannel:
     def __init__(self, ctx: "PluginContext", config: Config) -> None:
         self.ctx = ctx
@@ -20,7 +23,7 @@ class KoishiChannel:
         if not self.config.enabled:
             return
         if not self.config.server_address:
-            self.ctx.logger.warning("[notification_koishi] Koishi 服务器地址为空，跳过连接")
+            self.ctx.logger.warning("[notification_koishi] Koishi 服务地址为空，跳过连接")
             return
 
         if ws_client_manager.has_client(self.config.client_name):
@@ -55,7 +58,7 @@ class KoishiChannel:
             return False
 
         client_name = str(payload.get("client_name") or self.config.client_name or "Koishi")
-        message = str(payload.get("koishi_message") or payload.get("text") or "")
+        message = self._append_extra_summary(str(payload.get("koishi_message") or payload.get("text") or ""), payload)
         msgtype = str(payload.get("msgtype") or "text")
 
         client = ws_client_manager.get_client(client_name)
@@ -75,6 +78,38 @@ class KoishiChannel:
         if success:
             self.ctx.logger.info("[notification_koishi] Koishi 通知已发送")
         return bool(success)
+
+    def _append_extra_summary(self, message: str, payload: dict[str, Any]) -> str:
+        summary = self._render_extra_summary(payload)
+        if not summary:
+            return message
+        return f"{message}\n\n--- Extra ---\n{summary}"
+
+    def _render_extra_summary(self, payload: dict[str, Any]) -> str:
+        extra = payload.get("extra")
+        if not isinstance(extra, dict):
+            return ""
+
+        parts: list[str] = []
+        for index, item in enumerate(extra.get("logs") or [], start=1):
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get("name") or f"log-{index}.txt")
+            content = str(item.get("content") or "")
+            parts.append(f"日志: {name}\n{content}")
+
+        for key, label in (("images", "图片"), ("attachments", "附件")):
+            for index, item in enumerate(extra.get(key) or [], start=1):
+                if not isinstance(item, dict):
+                    continue
+                name = str(item.get("caption") or item.get("name") or item.get("path") or f"{key}-{index}")
+                path = str(item.get("path") or item.get("url") or "")
+                parts.append(f"{label}: {name}" + (f"\n{path}" if path else ""))
+
+        summary = "\n\n".join(parts).strip()
+        if len(summary) > SUMMARY_LIMIT:
+            return summary[: SUMMARY_LIMIT - 3] + "..."
+        return summary
 
 
 class Plugin:
