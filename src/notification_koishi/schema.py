@@ -1,15 +1,16 @@
-from pydantic import BaseModel, ConfigDict, Field
+from mas.plugin_config import PluginField
+from pydantic import BaseModel, ConfigDict
 
 
 class Config(BaseModel):
     model_config = ConfigDict(extra="allow")
 
-    enabled: bool = Field(default=True, description="启用 Koishi 通知")
-    server_address: str = Field(default="", description="Koishi 服务器地址")
-    token: str = Field(
+    enabled: bool = PluginField(default=True, description="启用 Koishi 通知")
+    server_address: str = PluginField(default="", description="Koishi 服务器地址")
+    token: str = PluginField(
         default="",
         description="认证 Token",
-        json_schema_extra={"format": "password"},
+        format="password",
     )
-    client_name: str = Field(default="Koishi", description="WebSocket 客户端名称")
-    reconnect_interval: float = Field(default=5.0, ge=0.5, description="重连间隔秒数")
+    client_name: str = PluginField(default="Koishi", description="WebSocket 客户端名称")
+    reconnect_interval: float = PluginField(default=5.0, ge=0.5, description="重连间隔秒数")
