@@ -5,7 +5,7 @@ from typing import Any, TYPE_CHECKING
 from app.utils.websocket import ws_client_manager
 
 if TYPE_CHECKING:
-    from mas.plugins import PluginContext
+    from app.plugins import PluginContext
 
 from .schema import Config
 
